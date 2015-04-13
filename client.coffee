@@ -117,12 +117,16 @@ renderGroup = (period, id) !->
 				Page.state.set 2, activity.key()
 
 	Dom.div !->
-		activity = group.ref(Page.state.get(2))
+		activityId = Page.state.get(2)
+		activity = group.ref(activityId)
 		Dom.div !->
-			Dom.text tr("%1 km in %2 minutes averaging %3 km/h",
+			Dom.text tr("%1 km in %2 minutes averaging %3 km/h.",
 				round(activity.get('distance')*.001,2),
 				round(activity.get('duration')/60),
 				round(activity.get('distance')*3.6/activity.get('duration'),2))
+
+			Ui.button tr("Show on Strava"), !->
+				Plugin.openUrl "https://www.strava.com/activities/#{activityId}"
 
 	Social.renderComments path: [period, id]
 
