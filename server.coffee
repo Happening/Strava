@@ -6,6 +6,16 @@ Subscription = require 'subscription'
 clientId = 2975
 clientSecret = '64884f6d595341147a2e976374101524ba3daec0'
 
+exports.onInstall = (config) !->
+	if config
+		Db.shared.set 'type', config.type
+
+exports.onConfig = (config) !->
+	if config && config.type != Db.shared.get('type')
+		Db.shared.set 'type', config.type
+		Db.shared.remove curPeriod()
+		refresh()
+
 exports.onHttp = (request) !->
 	userId = +request.path[0]
 	code = request.get.code
@@ -41,13 +51,14 @@ exports.httpAccess = (userId, data) !->
 
 	update userId, token, curPeriod()
 
-exports.hourly = exports.client_refresh = !->
+exports.hourly = exports.client_refresh = refresh = !->
 	for userId, token of Db.backend.get('tokens')
-		update(userId, token, curPeriod())
+		update userId, token, curPeriod()
 		if new Date().getDate() < 2
-			update(userId, token, prevPeriod())
+			update userId, token, prevPeriod()
 
 update = (userId, token, period) !->
+	log 'update', userId, period
 	after = new Date(period[0..3], period[4..5]-1).getTime()*.001
 	before = new Date(period[0..3], period[4..5]).getTime()*.001
 	Http.get
@@ -65,10 +76,11 @@ exports.httpActivities = (userId, period, data) !->
 		log 'error', JSON.stringify(data)
 		return
 
+	type = Db.shared.get('type') || 'all'
+
 	total = 0
 	findRelated = []
 	data.forEach (activity) !->
-		log 'activity', activity
 		if activity.athlete_count>1
 			# might need to match up with other activity
 			groupId = Db.backend.get('related',activity.id)
@@ -83,9 +95,12 @@ exports.httpActivities = (userId, period, data) !->
 		else
 			groupId = activity.id
 
-		writeActivity userId, period, groupId, activity
+		log 'type=', type, 'activity type=', activity.type, JSON.stringify(activity)
+		if type is 'all' || (activity.type||'').toLowerCase() is type
+			log 'adding!'
+			writeActivity userId, period, groupId, activity
 
-		total += activity.distance
+			total += activity.distance
 
 	Db.shared.set period, 'totals', userId, total
 

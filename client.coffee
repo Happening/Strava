@@ -94,6 +94,8 @@ renderPeriod = (period) !->
 
 				Dom.onTap !->
 					Page.nav [period, groupO.key()]
+		, (groupO) ->
+			- groupO.key()
 
 	if Plugin.userIsAdmin()
 		Ui.bigButton tr("Logout"), !->
@@ -111,7 +113,7 @@ renderGroup = (period, id) !->
 			Dom.style Flex: 1
 			Dom.text group.get(Page.state.get(2), 'name')
 		group.iterate (activity) !->
-			Ui.avatar Plugin.userAvatar(activity.get('userId')), undefined, undefined, !->
+			Ui.avatar Plugin.userAvatar(activity.get('userId')), onTap: !->
 				Page.state.set 2, activity.key()
 
 	Dom.div !->
@@ -138,6 +140,59 @@ round = (int, precision=0) ->
 	Math.round(int*p)/p
 
 exports.renderSettings = !->
+
+	Form = require 'form'
+
+	Dom.div !->
+		Dom.style margin: '0 -8px 0 -8px'
+
+		Form.box !->
+			value = Db.shared?.get('type') ? 'ride'
+
+			texts =
+				ride: tr("Rides")
+				run: tr("Runs")
+				swim: tr("Swims")
+				all: tr("All")
+
+			Dom.text tr("Activity type")
+			[handleChange] = Form.makeInput
+				name: 'type'
+				value: value
+				content: (v) !->
+					Dom.div texts[v]
+
+			Dom.onTap !->
+				Modal.show tr("Activity type"), !->
+					Dom.style width: '60%'
+					Dom.div !->
+						Dom.style
+							maxHeight: '45.5%'
+							backgroundColor: '#eee'
+							margin: '-12px'
+						Dom.overflow()
+						([k,v] for k,v of texts).forEach ([v,text]) !->
+							Ui.item !->
+								Dom.text text
+								if value is v
+									Dom.style fontWeight: 'bold'
+
+									Dom.div !->
+										Dom.style
+											Flex: 1
+											padding: '0 10px'
+											textAlign: 'right'
+											fontSize: '150%'
+											color: Plugin.colors().highlight
+										Dom.text "✓"
+								Dom.onTap !->
+									handleChange v
+									value = v
+									Modal.remove()
+
+		Form.sep()
+
+
 	if Db.shared
 		Ui.bigButton !->
 			Dom.text tr("Refresh data")
